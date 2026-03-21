@@ -9,7 +9,7 @@ import cv2
 st.set_page_config(page_title="Plant Health Detection", page_icon="🌿")
 
 st.title("🌿 Plant Health Detection")
-st.write("Upload a leaf image to check if it is Healthy or Unhealthy.")
+st.write("Upload or capture a leaf image to check if it is Healthy or Unhealthy.")
 
 # ===== Load Model =====
 @st.cache_resource
@@ -20,30 +20,26 @@ model = load_model()
 
 IMG_SIZE = 224
 
-# ===== Leaf Extraction (IMPORTANT) =====
+# ===== Leaf Extraction =====
 def extract_leaf(image):
     img = np.array(image)
     img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
-    # Green mask (tune if needed)
     lower = np.array([25, 40, 40])
     upper = np.array([90, 255, 255])
 
     mask = cv2.inRange(hsv, lower, upper)
 
-    # Noise removal
     kernel = np.ones((5, 5), np.uint8)
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
 
-    # Find contours
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     if len(contours) == 0:
-        return image  # fallback
+        return image
 
-    # Largest contour = main leaf
     c = max(contours, key=cv2.contourArea)
     x, y, w, h = cv2.boundingRect(c)
 
@@ -52,7 +48,7 @@ def extract_leaf(image):
 
     return Image.fromarray(leaf)
 
-# ===== Prediction Function =====
+# ===== Prediction =====
 def predict_image(image):
     image = image.convert("RGB")
     image = image.resize((IMG_SIZE, IMG_SIZE))
@@ -67,24 +63,38 @@ def predict_image(image):
     else:
         return "Healthy", (1 - p) * 100
 
-# ===== Upload =====
-uploaded_file = st.file_uploader(
-    "📤 Upload Leaf Image",
-    type=["jpg", "jpeg", "png"]
-)
+# ===== INPUT OPTION =====
+option = st.radio("Choose Input Method:", ["Upload Image", "Use Camera"])
 
-if uploaded_file is not None:
-    try:
-        # ===== FIXED IMAGE LOADING =====
+image = None
+
+# ===== Upload Option =====
+if option == "Upload Image":
+    uploaded_file = st.file_uploader(
+        "📤 Upload Leaf Image",
+        type=["jpg", "jpeg", "png"]
+    )
+
+    if uploaded_file is not None:
         image = Image.open(BytesIO(uploaded_file.read())).convert("RGB")
 
+# ===== Camera Option =====
+elif option == "Use Camera":
+    camera_file = st.camera_input("📷 Take a photo")
+
+    if camera_file is not None:
+        image = Image.open(BytesIO(camera_file.read())).convert("RGB")
+
+# ===== PROCESS =====
+if image is not None:
+    try:
         st.image(image, caption="Original Image", use_column_width=True)
 
-        # ===== LEAF EXTRACTION =====
+        # Leaf extraction
         leaf = extract_leaf(image)
-        st.image(leaf, caption="Detected Leaf (Processed)", use_column_width=True)
+        st.image(leaf, caption="Detected Leaf", use_column_width=True)
 
-        # ===== PREDICTION =====
+        # Prediction
         label, confidence = predict_image(leaf)
 
         if label == "Healthy":
@@ -95,4 +105,4 @@ if uploaded_file is not None:
         st.write(f"Confidence: {confidence:.2f}%")
 
     except Exception as e:
-        st.error(f"❌ Error processing image: {e}")
+        st.error(f"❌ Error: {e}")
