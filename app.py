@@ -2,20 +2,21 @@ import streamlit as st
 import tensorflow as tf
 import cv2
 import numpy as np
-from PIL import Image  # ✅ FIX 1: Missing import
+from PIL import Image  # FIX: missing import
 
 # Load the TensorFlow model
-model = tf.keras.models.load_model('path/to/your/model')
+# FIX: correct model path + safer loading
+model = tf.keras.models.load_model('healthy_unhealthy_model.h5', compile=False)
 
 def load_image(image_file):
-   image = Image.open(image_file).convert("RGB")  # ✅ ensure RGB
-   return image
+    image = Image.open(image_file).convert("RGB")  # FIX: ensure RGB
+    return image
 
 def predict(image):
-    image = np.array(image)  # ✅ FIX 2: Convert PIL → NumPy
+    image = np.array(image)  # FIX: convert PIL → NumPy
 
-    image = cv2.resize(image, (224, 224))  # Resize image
-    image = image / 255.0  # ✅ FIX 3: Normalize
+    image = cv2.resize(image, (224, 224))  # Resize
+    image = image / 255.0  # FIX: normalization
 
     image = np.expand_dims(image, axis=0)
     predictions = model.predict(image)
@@ -42,7 +43,7 @@ if st.button('Capture from Webcam'):
     ret, frame = cap.read()
 
     if ret:
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # ✅ FIX 4: Color correction
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # FIX: correct color
         st.image(frame_rgb, caption='Captured Image', use_container_width=True)
 
         predictions = predict(frame_rgb)
