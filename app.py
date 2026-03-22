@@ -79,19 +79,47 @@ def predict_image(image):
         return prob
 
 # ===== INPUT OPTION =====
+# ===== INPUT OPTION =====
 option = st.radio("Choose Input Method:", ["Upload Image", "Use Camera"])
 
 image = None
 
+# ===== Upload Option =====
 if option == "Upload Image":
-    uploaded_file = st.file_uploader("📤 Upload Leaf Image", type=["jpg", "jpeg", "png"])
-    if uploaded_file:
-        image = Image.open(BytesIO(uploaded_file.read())).convert("RGB")
+    uploaded_file = st.file_uploader(
+        "📤 Upload Leaf Image",
+        type=["jpg", "jpeg", "png"]
+    )
 
-else:
+    if uploaded_file is not None:
+        try:
+            image = Image.open(BytesIO(uploaded_file.read()))
+            image = image.convert("RGB")  # ensure consistency
+        except Exception as e:
+            st.error(f"❌ Error reading uploaded image: {e}")
+
+# ===== Camera Option =====
+elif option == "Use Camera":
     camera_file = st.camera_input("📷 Take a photo")
-    if camera_file:
-        image = Image.open(BytesIO(camera_file.read())).convert("RGB")
+
+    if camera_file is not None:
+        try:
+            image = Image.open(BytesIO(camera_file.read()))
+
+            # 🔥 Fix 1: Convert to RGB
+            image = image.convert("RGB")
+
+            # 🔥 Fix 2: Remove mirror effect (common issue)
+            img_np = np.array(image)
+            img_np = cv2.flip(img_np, 1)
+
+            # 🔥 Fix 3: Slight blur to reduce noise (optional but useful)
+            img_np = cv2.GaussianBlur(img_np, (3, 3), 0)
+
+            image = Image.fromarray(img_np)
+
+        except Exception as e:
+            st.error(f"❌ Error reading camera image: {e}")
 
 # ===== PROCESS =====
 if image is not None:
